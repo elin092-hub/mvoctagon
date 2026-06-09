@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MV Octagon</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue-dark: #3d8ef0;
+      --blue-mid: #4a9af5;
+      --blue-light: #6db3ff;
+      --blue-pale: #e8f3ff;
+      --blue-border: #b3d4fb;
+      --text-dark: #1a4a8a;
+      --text-body: #374151;
+      --text-muted: #6b7280;
+      --white: #ffffff;
+      --bg: #e8f3ff;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text-body); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* NAV */
+    nav { background: var(--white); border-bottom: 1px solid var(--blue-border); padding: 0 48px; min-height: 90px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .nav-logo { display: flex; align-items: center; gap: 14px; text-decoration: none; cursor: pointer; }
+    .nav-logo-box { width: 48px; height: 48px; background: var(--blue-dark); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 13px; font-weight: 700; }
+    .nav-logo-text { font-size: 26px; font-weight: 700; color: var(--text-dark); letter-spacing: -0.5px; }
+    .nav-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .nav-links { display: flex; align-items: center; gap: 4px; list-style: none; }
+    .nav-links a { text-decoration: none; font-size: 14px; color: var(--text-muted); padding: 6px 14px; border-radius: 6px; transition: color 0.2s, background 0.2s; cursor: pointer; }
+    .nav-links a:hover { color: var(--blue-dark); background: var(--blue-pale); }
+    .nav-links a.active { color: var(--blue-dark); font-weight: 600; border-bottom: 2px solid var(--blue-dark); border-radius: 0; }
+    .nav-user { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 10px; padding-right: 4px; }
+    .nav-user-name { font-weight: 600; color: var(--blue-dark); }
+    .btn-signout { font-size: 12px; padding: 4px 12px; border: 1px solid var(--blue-border); border-radius: 6px; background: white; color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; }
+
+    /* HERO */
+    .hero { text-align: center; padding: 60px 24px 40px; }
+    .hero h1 { font-size: 40px; font-weight: 700; color: var(--blue-dark); line-height: 1.2; margin-bottom: 14px; }
+    .hero h1 span { color: var(--blue-light); }
+    .hero p { font-size: 16px; color: var(--text-muted); max-width: 480px; margin: 0 auto; line-height: 1.7; }
+
+    /* MAIN */
+    main { flex: 1; max-width: 1100px; margin: 0 auto; width: 100%; padding: 0 24px 64px; }
+    .section-title { font-size: 20px; font-weight: 700; color: var(--text-dark); margin-bottom: 20px; }
+
+    /* EVENTS */
+    .events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+    .event-card { background: var(--white); border: 1px solid var(--blue-border); border-radius: 14px; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+    .event-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(37,99,235,0.12); }
+    .event-card-header { background: var(--blue-dark); padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; }
+    .event-card-header span { color: white; font-size: 14px; font-weight: 600; }
+    .event-card-header .spots { font-size: 12px; background: rgba(255,255,255,0.2); color: white; padding: 3px 10px; border-radius: 20px; }
+    .event-card-body { padding: 16px 18px; }
+    .event-badges { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .badge { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: var(--blue-pale); color: var(--blue-dark); border: 1px solid var(--blue-border); }
+    .badge.date { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+    .badge.hours { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+    .event-desc { font-size: 13.5px; color: var(--text-muted); line-height: 1.6; margin-bottom: 12px; }
+    .event-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+    .countdown { font-size: 12px; color: var(--blue-mid); font-weight: 500; margin-bottom: 14px; }
+    .btn-accept { width: 100%; padding: 10px; background: var(--blue-dark); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.2s; }
+    .btn-accept:hover { background: var(--blue-mid); }
+    .btn-accept:disabled { background: #9ca3af; cursor: not-allowed; }
+
+    /* EMPTY STATE */
+    .empty-state { background: var(--white); border: 1px solid var(--blue-border); border-radius: 14px; padding: 80px 24px; text-align: center; grid-column: 1/-1; }
+    .empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; }
+    .empty-state p { font-size: 14px; color: var(--text-muted); }
+
+    /* CARDS */
+    .card { background: white; border: 1px solid var(--blue-border); border-radius: 14px; padding: 28px; }
+
+    /* FORMS */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--blue-border); border-radius: 8px;
+      font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text-body); outline: none; transition: border-color 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--blue-mid); }
+    .btn-primary { width: 100%; padding: 10px; background: var(--blue-dark); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.2s; }
+    .btn-primary:hover { background: var(--blue-mid); }
+    .btn-secondary { padding: 8px 16px; background: #f3f4f6; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; color: var(--text-muted); cursor: pointer; }
+    .btn-danger { padding: 8px 16px; background: #fee2e2; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; color: #991b1b; cursor: pointer; }
+
+    /* MODAL */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: white; border-radius: 16px; padding: 32px; width: 100%; max-width: 440px; margin: 16px; animation: slideUp 0.2s ease; max-height: 90vh; overflow-y: auto; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal h2 { font-size: 20px; font-weight: 700; color: var(--text-dark); margin-bottom: 6px; }
+    .modal-sub { font-size: 13px; color: var(--blue-mid); font-weight: 500; margin-bottom: 20px; }
+    .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+    .confirm-screen { text-align: center; padding: 10px 0; }
+    .confirm-icon { font-size: 48px; margin-bottom: 12px; }
+
+    /* TABS */
+    .tab-bar { display: flex; gap: 0; margin-bottom: 24px; border: 1px solid var(--blue-border); border-radius: 8px; overflow: hidden; }
+    .tab-btn { flex: 1; padding: 10px; border: none; background: white; color: var(--text-muted); font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
+    .tab-btn.active { background: var(--blue-dark); color: white; }
+
+    /* DASHBOARD */
+    .stat-card { background: var(--blue-pale); border: 1px solid var(--blue-border); border-radius: 12px; padding: 20px; text-align: center; }
+    .stat-number { font-size: 36px; font-weight: 700; color: var(--blue-dark); }
+    .stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .hours-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--blue-border); }
+    .hours-row:last-child { border-bottom: none; }
+
+    /* ADMIN */
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .admin-table th { text-align: left; padding: 10px 12px; background: var(--blue-pale); color: var(--text-dark); font-weight: 600; font-size: 12px; border-bottom: 1px solid var(--blue-border); }
+    .admin-table td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; color: var(--text-body); }
+    .admin-table tr:hover td { background: #f9fafb; }
+
+    /* ALERT */
+    .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-bottom: 16px; }
+    .alert.success { background: #d1fae5; color: #065f46; }
+    .alert.error { background: #fee2e2; color: #991b1b; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    footer { background: var(--blue-mid); color: rgba(255,255,255,0.85); text-align: center; padding: 18px 24px; font-size: 13px; margin-top: auto; }
+
+    @media (max-width: 640px) {
+      nav { padding: 0 16px; }
+      .hero h1 { font-size: 28px; }
+      .nav-links a { font-size: 12px; padding: 5px 8px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo" onclick="showPage('home')">
+    <svg width="48" height="48" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><polygon points="11,2 25,2 34,11 34,25 25,34 11,34 2,25 2,11" fill="#3d8ef0" stroke="white" stroke-width="1.5"/></svg>
+    <span class="nav-logo-text">MV Octagon</span>
+  </div>
+  <div class="nav-right">
+    <ul class="nav-links">
+      <li><a onclick="showPage('dashboard')" id="nav-dashboard" style="display:none;background:#3d8ef0;color:white;border-radius:8px;padding:6px 14px;font-weight:600;">My Dashboard</a></li>
+      <li><a onclick="showPage('home')" class="active" id="nav-home">Home</a></li>
+      <li><a onclick="showPage('about')" id="nav-about">About</a></li>
+      <li><a onclick="showPage('team')" id="nav-team">Our Team</a></li>
+      <li><a onclick="showPage('admin')" id="nav-admin" style="display:none">Admin Panel</a></li>
+      <li><a onclick="showPage('auth')" id="nav-auth">Sign Up / Log In</a></li>
+      <li><a onclick="showPage('support')" id="nav-support">Support</a></li>
+    </ul>
+    <div class="nav-user" id="nav-user-info" style="display:none">
+      <span class="nav-user-name" id="nav-user-name"></span>
+      <button class="btn-signout" onclick="signOut()">Sign Out</button>
+    </div>
+  </div>
+</nav>
+
+<!-- HOME PAGE -->
+<div id="page-home" class="page active">
+  <div class="hero">
+    <h1>Community Action, <span>Together.</span></h1>
+    <p>Join MV Octagon to make a difference at Monta Vista High School. Discover local volunteer events and connect with your community.</p>
+  </div>
+  <main>
+    <div class="section-title">Upcoming Events</div>
+    <div class="events-grid" id="events-grid">
+      <div class="empty-state"><h3>Loading events...</h3></div>
+    </div>
+  </main>
+</div>
+
+
+<!-- EVENT DETAIL PAGE -->
+<div id="page-event-detail" class="page">
+  <main style="padding-top:32px;max-width:800px;margin:0 auto;">
+    <button onclick="showPage('home')" style="background:none;border:none;color:var(--blue-dark);font-size:14px;font-weight:600;cursor:pointer;margin-bottom:20px;display:flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;">← Back to Events</button>
+    <div class="card" style="padding:32px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div>
+          <h1 id="detail-name" style="font-size:26px;font-weight:700;color:var(--text-dark);margin-bottom:8px;"></h1>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;" id="detail-badges"></div>
+        </div>
+        <div id="detail-spots-box" style="background:var(--blue-pale);border:1px solid var(--blue-border);border-radius:10px;padding:12px 20px;text-align:center;">
+          <div id="detail-spots" style="font-size:24px;font-weight:700;color:var(--blue-dark);"></div>
+          <div style="font-size:12px;color:var(--text-muted);">spots left</div>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--blue-border);margin-bottom:24px;"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+        <div>
+          <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">Event Leader</div>
+          <div id="detail-leader" style="font-size:15px;font-weight:600;color:var(--text-dark);"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">Hours Earned</div>
+          <div id="detail-hours" style="font-size:15px;font-weight:600;color:var(--text-dark);"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">Date</div>
+          <div id="detail-date" style="font-size:15px;font-weight:600;color:var(--text-dark);"></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:6px;">Category</div>
+          <div id="detail-category" style="font-size:15px;font-weight:600;color:var(--text-dark);"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px;">About This Event</div>
+        <p id="detail-desc" style="font-size:15px;color:var(--text-body);line-height:1.7;"></p>
+      </div>
+
+      <div style="margin-bottom:28px;" id="detail-volunteers-section">
+        <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:10px;">Volunteers Signed Up</div>
+        <div id="detail-volunteers" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+      </div>
+
+      <div id="detail-action-area">
+        <div id="detail-countdown" style="font-size:13px;color:var(--blue-mid);font-weight:500;margin-bottom:14px;"></div>
+        <div id="detail-alert" style="margin-bottom:12px;"></div>
+        <button id="detail-accept-btn" class="btn-primary" onclick="acceptEvent()" style="width:100%;padding:12px;font-size:15px;">✅ Accept — Join This Event</button>
+        <button id="detail-withdraw-btn" class="btn-primary" onclick="withdrawEvent()" style="width:100%;padding:12px;font-size:15px;background:#ef4444;display:none;">❌ Reject / Cancel My Spot</button>
+        <div id="detail-locked-msg" style="display:none;text-align:center;padding:12px;background:#fef3c7;border-radius:8px;font-size:13px;color:#92400e;font-weight:500;">⚠️ You cannot withdraw within 24 hours of the event.</div>
+        <p style="font-size:12px;color:var(--text-muted);text-align:center;margin-top:10px;">Note: Withdrawing within 24 hours of the event will deduct 2 hours from your total.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ABOUT PAGE -->
+<div id="page-about" class="page">
+  <div class="hero"><h1>About <span>MV Octagon</span></h1><p>Learn who we are and why we do what we do.</p></div>
+  <main>
+    <div class="card" style="max-width:700px;margin:0 auto;">
+      <h2 style="color:var(--text-dark);font-size:22px;margin-bottom:14px;">Our Mission</h2>
+      <p style="color:var(--text-muted);line-height:1.8;margin-bottom:24px;">MV Octagon is a youth-led volunteering organization based in Oakley, CA. We connect young people with meaningful community service opportunities — from food drives to park cleanups — and empower them to create lasting positive change in their neighborhoods.</p>
+      <h3 style="color:var(--text-dark);font-size:17px;margin-bottom:12px;">Why volunteer with us?</h3>
+      <ul style="color:var(--text-muted);line-height:2;padding-left:20px;">
+        <li>Build real-world leadership and teamwork skills</li>
+        <li>Earn community service hours for school</li>
+        <li>Meet like-minded peers who care about Oakley</li>
+        <li>Make a direct, visible impact in your community</li>
+      </ul>
+    </div>
+  </main>
+</div>
+
+<!-- TEAM PAGE -->
+<div id="page-team" class="page">
+  <div class="hero"><h1>Our <span>Team</span></h1><p>Meet the people behind MV Octagon.</p></div>
+  <main>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px;">
+      <div class="card" style="text-align:center;">
+        <div style="width:56px;height:56px;background:var(--blue-pale);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:16px;font-weight:700;color:var(--blue-dark);">JM</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text-dark);margin-bottom:4px;">James Mitchell</div>
+        <div style="font-size:12px;color:var(--blue-mid);font-weight:500;margin-bottom:10px;">Founder & Director</div>
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">Passionate about youth empowerment and community service in the East Bay.</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="width:56px;height:56px;background:var(--blue-pale);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:16px;font-weight:700;color:var(--blue-dark);">SR</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text-dark);margin-bottom:4px;">Sofia Reyes</div>
+        <div style="font-size:12px;color:var(--blue-mid);font-weight:500;margin-bottom:10px;">Events Coordinator</div>
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">Organizes all volunteer events and ensures every experience is meaningful.</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="width:56px;height:56px;background:var(--blue-pale);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:16px;font-weight:700;color:var(--blue-dark);">DK</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text-dark);margin-bottom:4px;">David Kim</div>
+        <div style="font-size:12px;color:var(--blue-mid);font-weight:500;margin-bottom:10px;">Outreach Lead</div>
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">Connects MV Octagon with local schools, businesses, and nonprofits.</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="width:56px;height:56px;background:var(--blue-pale);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:16px;font-weight:700;color:var(--blue-dark);">AL</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text-dark);margin-bottom:4px;">Aisha Lewis</div>
+        <div style="font-size:12px;color:var(--blue-mid);font-weight:500;margin-bottom:10px;">Mentor & Coach</div>
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">Guides volunteers through their service journey and personal growth.</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="width:56px;height:56px;background:var(--blue-pale);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:16px;font-weight:700;color:var(--blue-dark);">TC</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text-dark);margin-bottom:4px;">Tyler Chen</div>
+        <div style="font-size:12px;color:var(--blue-mid);font-weight:500;margin-bottom:10px;">Tech & Media</div>
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">Manages the website and social media to keep the community informed.</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- AUTH PAGE -->
+<div id="page-auth" class="page">
+  <div class="hero"><h1>Join <span>MV Octagon</span></h1><p>Create an account or log in to register for events.</p></div>
+  <main>
+    <div class="card" style="max-width:420px;margin:0 auto;">
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tab-signup" onclick="switchTab('signup')">Sign Up</button>
+        <button class="tab-btn" id="tab-login" onclick="switchTab('login')">Log In</button>
+      </div>
+      <div id="auth-alert"></div>
+      <div id="form-signup">
+        <div class="form-group"><label>Full Name</label><input type="text" id="signup-name" placeholder="Your name" /></div>
+        <div class="form-group"><label>Email</label><input type="email" id="signup-email" placeholder="you@email.com" /></div>
+        <div class="form-group"><label>Password</label><input type="password" id="signup-password" placeholder="Create a password (min 6 chars)" /></div>
+        <button class="btn-primary" onclick="signUp()">Create Account</button>
+      </div>
+      <div id="form-login" style="display:none;">
+        <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com" /></div>
+        <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="Your password" /></div>
+        <button class="btn-primary" onclick="logIn()">Log In</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- DASHBOARD PAGE -->
+<div id="page-dashboard" class="page">
+  <main style="padding-top:32px;">
+    <div style="display:grid;grid-template-columns:280px 1fr;gap:24px;align-items:start;">
+
+      <!-- LEFT SIDEBAR -->
+      <div style="display:grid;gap:16px;">
+
+        <!-- Profile Card -->
+        <div class="card" style="text-align:center;padding:28px 20px;">
+          <div id="dash-avatar" style="width:64px;height:64px;background:var(--blue-dark);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:22px;font-weight:700;color:white;">E</div>
+          <div id="dash-name" style="font-size:17px;font-weight:700;color:var(--text-dark);margin-bottom:4px;">Ethan Lin</div>
+          <div id="dash-email" style="font-size:12px;color:var(--text-muted);margin-bottom:12px;"></div>
+          <div id="dash-role-badge" style="display:inline-block;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;background:var(--blue-pale);color:var(--blue-dark);border:1px solid var(--blue-border);">Member</div>
+        </div>
+
+        <!-- Hours Summary -->
+        <div class="card" style="padding:20px;">
+          <div style="font-size:13px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;">Volunteer Stats</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div style="font-size:13px;color:var(--text-body);">Total Hours</div>
+            <div id="dash-total-hours" style="font-size:22px;font-weight:700;color:var(--blue-dark);">0</div>
+          </div>
+          <div style="height:1px;background:var(--blue-border);margin-bottom:14px;"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div style="font-size:13px;color:var(--text-body);">Events Joined</div>
+            <div id="dash-events-count" style="font-size:22px;font-weight:700;color:var(--blue-dark);">0</div>
+          </div>
+          <div style="height:1px;background:var(--blue-border);margin-bottom:14px;"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-size:13px;color:var(--text-body);">Hours This Month</div>
+            <div id="dash-month-hours" style="font-size:22px;font-weight:700;color:var(--blue-dark);">0</div>
+          </div>
+        </div>
+
+        <!-- Hours Progress -->
+        <div class="card" style="padding:20px;">
+          <div style="font-size:13px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Goal Progress</div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <div style="font-size:13px;color:var(--text-body);">Toward 100 hours</div>
+            <div id="dash-progress-pct" style="font-size:13px;font-weight:600;color:var(--blue-dark);">0%</div>
+          </div>
+          <div style="background:#e5e7eb;border-radius:99px;height:8px;overflow:hidden;">
+            <div id="dash-progress-bar" style="height:100%;background:var(--blue-dark);border-radius:99px;width:0%;transition:width 0.5s;"></div>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:8px;" id="dash-progress-label">0 of 20 hours completed</div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT SIDE -->
+      <div style="display:grid;gap:20px;">
+
+        <!-- Welcome banner -->
+        <div style="background:linear-gradient(135deg,var(--blue-dark),var(--blue-mid));border-radius:14px;padding:24px 28px;color:white;">
+          <div style="font-size:20px;font-weight:700;margin-bottom:6px;">Welcome back, <span id="dash-welcome-name">there</span>! 👋</div>
+          <div style="font-size:14px;opacity:0.85;">Here's a summary of your volunteer activity with MV Octagon.</div>
+        </div>
+
+        <!-- Registered Events -->
+        <div class="card">
+          <div class="section-title" style="margin-bottom:16px;">My Registered Events</div>
+          <div id="dash-registrations"><p style="color:var(--text-muted);font-size:14px;">No registrations yet. <a onclick="showPage('home')" style="color:var(--blue-mid);cursor:pointer;text-decoration:underline;">Browse events →</a></p></div>
+        </div>
+
+        <!-- Hours Breakdown -->
+        <div class="card">
+          <div class="section-title" style="margin-bottom:16px;">Hours Breakdown by Event</div>
+          <div id="dash-hours-log"><p style="color:var(--text-muted);font-size:14px;">No hours awarded yet.</p></div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="page-admin" class="page">
+  <div class="hero"><h1>Admin <span>Panel</span></h1><p>Manage events and volunteer hours.</p></div>
+  <main>
+    <div style="display:grid;gap:32px;">
+
+      <!-- Add Event -->
+      <div class="card">
+        <div class="section-title" style="margin-bottom:20px;">Add New Event</div>
+        <div id="admin-event-alert"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group"><label>Event Title</label><input type="text" id="ev-name" placeholder="Title of the volunteer activity" /></div>
+          <div class="form-group"><label>Date</label><input type="date" id="ev-date" /></div>
+          <div class="form-group"><label>Hours Volunteers Gain</label><input type="number" id="ev-hours" placeholder="e.g. 2" min="1" /></div>
+          <div class="form-group"><label>Spots Available</label><input type="number" id="ev-spots" placeholder="e.g. 20" min="1" /></div>
+          <div class="form-group"><label>Who's In Charge</label><input type="text" id="ev-leading" placeholder="Name of event leader" /></div>
+        </div>
+        <div class="form-group"><label>Description</label><textarea id="ev-desc" rows="3" placeholder="Describe what volunteers will be doing..."></textarea></div>
+        <button class="btn-primary" onclick="addEvent()">Add Event</button>
+      </div>
+
+      <!-- Manage Events -->
+      <div class="card">
+        <div class="section-title" style="margin-bottom:16px;">Manage Events</div>
+        <div id="admin-events-list"><p style="color:var(--text-muted);font-size:14px;">Loading...</p></div>
+      </div>
+
+      <!-- Give Hours -->
+      <div class="card">
+        <div class="section-title" style="margin-bottom:20px;">Award Volunteer Hours</div>
+        <div id="admin-hours-alert"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group"><label>Member Email</label><input type="email" id="award-email" placeholder="member@email.com" /></div>
+          <div class="form-group"><label>Event</label>
+            <select id="award-event"><option value="">Select event...</option></select>
+          </div>
+          <div class="form-group"><label>Hours to Award</label><input type="number" id="award-hours" placeholder="e.g. 2" min="1" /></div>
+        </div>
+        <button class="btn-primary" onclick="awardHours()">Award Hours</button>
+      </div>
+
+      <!-- All Members -->
+      <div class="card">
+        <div class="section-title" style="margin-bottom:16px;">All Members</div>
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Total Hours</th><th>Action</th></tr></thead>
+            <tbody id="admin-members-table"><tr><td colspan="5" style="color:var(--text-muted);">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- SUPPORT PAGE -->
+<div id="page-support" class="page">
+  <div class="hero"><h1>Get <span>Support</span></h1><p>Have a question? We're here to help.</p></div>
+  <main style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
+    <div class="card">
+      <h2 style="font-size:18px;font-weight:700;color:var(--text-dark);margin-bottom:20px;">Send us a message</h2>
+      <div class="form-group"><label>Name</label><input type="text" id="sup-name" placeholder="Your name" /></div>
+      <div class="form-group"><label>Email</label><input type="email" id="sup-email" placeholder="you@email.com" /></div>
+      <div class="form-group"><label>Message</label><textarea id="sup-msg" rows="4" placeholder="How can we help?"></textarea></div>
+      <button class="btn-primary" onclick="showSupportConfirm()">Send Message</button>
+      <div id="support-confirm" style="display:none;margin-top:14px;text-align:center;color:var(--blue-dark);font-weight:600;font-size:14px;">✅ Message sent! We will get back to you soon.</div>
+    </div>
+    <div class="card">
+      <h2 style="font-size:18px;font-weight:700;color:var(--text-dark);margin-bottom:16px;">FAQs</h2>
+      <div style="margin-bottom:16px;"><div style="font-size:14px;font-weight:600;color:var(--text-dark);margin-bottom:4px;">Do I need experience to volunteer?</div><div style="font-size:13px;color:var(--text-muted);line-height:1.6;">No experience needed! All of our events are open to anyone who wants to help.</div></div>
+      <div style="margin-bottom:16px;"><div style="font-size:14px;font-weight:600;color:var(--text-dark);margin-bottom:4px;">How old do I need to be?</div><div style="font-size:13px;color:var(--text-muted);line-height:1.6;">Most events are open to ages 13+. Some may require a parent/guardian.</div></div>
+      <div style="margin-bottom:16px;"><div style="font-size:14px;font-weight:600;color:var(--text-dark);margin-bottom:4px;">Will I get service hours?</div><div style="font-size:13px;color:var(--text-muted);line-height:1.6;">Yes! We provide signed verification letters for all completed volunteer hours.</div></div>
+      <div style="margin-bottom:16px;"><div style="font-size:14px;font-weight:600;color:var(--text-dark);margin-bottom:4px;">How do I cancel a registration?</div><div style="font-size:13px;color:var(--text-muted);line-height:1.6;">Email us at support@mvoctagon.com and we will remove you from the event.</div></div>
+      <div><div style="font-size:14px;font-weight:600;color:var(--text-dark);margin-bottom:4px;">Are events free to attend?</div><div style="font-size:13px;color:var(--text-muted);line-height:1.6;">Yes, all MV Octagon volunteer events are completely free.</div></div>
+    </div>
+  </main>
+</div>
+
+<!-- REGISTER MODAL -->
+<div class="modal-overlay" id="modal-register">
+  <div class="modal">
+    <div id="modal-reg-form">
+      <h2>Register for Event</h2>
+      <div class="modal-sub" id="modal-reg-event-name"></div>
+      <div class="form-group"><label>Full Name</label><input type="text" id="reg-name" placeholder="Your name" /></div>
+      <div class="form-group"><label>Age</label><input type="number" id="reg-age" placeholder="Your age" min="10" max="99" /></div>
+      <div class="form-group"><label>Availability</label>
+        <select id="reg-avail">
+          <option value="">Select availability</option>
+          <option>Morning (8am–12pm)</option>
+          <option>Afternoon (12pm–5pm)</option>
+          <option>Full Day</option>
+        </select>
+      </div>
+      <div id="reg-alert"></div>
+      <div class="modal-btns">
+        <button class="btn-secondary" onclick="closeModal('modal-register')">Cancel</button>
+        <button class="btn-primary" style="flex:2" onclick="submitRegistration()">Confirm Registration</button>
+      </div>
+    </div>
+    <div id="modal-reg-confirm" class="confirm-screen" style="display:none;">
+      <div class="confirm-icon">🎉</div>
+      <h2>You are registered!</h2>
+      <p style="color:var(--text-muted);font-size:14px;margin-top:8px;">You've successfully signed up. See you there!</p>
+      <button class="btn-primary" style="margin-top:20px;" onclick="closeModal('modal-register')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAKE MODERATOR MODAL -->
+<div class="modal-overlay" id="modal-mod">
+  <div class="modal">
+    <h2>Change Member Role</h2>
+    <div class="modal-sub" id="modal-mod-name"></div>
+    <div class="form-group">
+      <label>Role</label>
+      <select id="mod-role-select">
+        <option value="member">Member</option>
+        <option value="moderator">Moderator</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeModal('modal-mod')">Cancel</button>
+      <button class="btn-primary" style="flex:2" onclick="updateRole()">Save Role</button>
+    </div>
+  </div>
+</div>
+
+<footer>Copyright © 2026 mvoctagon.com — All Rights Reserved.</footer>
+
+<script>
+  const SUPABASE_URL = 'https://vlgsbqzgnnjbtkiqlpdv.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZ3NicXpnbm5qYnRraXFscGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NzA5NDgsImV4cCI6MjA5NjQ0Njk0OH0.wTSb1TOxo_ZPm7jYzmI5p2xrCxZz7ANdcTwW4fVtIo4';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let currentUser = null;
+  let currentProfile = null;
+  let currentEventId = null;
+  let modTargetId = null;
+
+  // ── INIT ──────────────────────────────────────────────
+  async function init() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) await loadUser(session.user);
+    loadEvents();
+  }
+
+  async function loadUser(user) {
+    currentUser = user;
+    // Try by email first
+    let { data } = await sb.from('profiles').select('*').eq('email', user.email).single();
+    // If not found, try creating it
+    if (!data) {
+      const { data: inserted } = await sb.from('profiles').insert({ email: user.email, full_name: user.user_metadata?.full_name || '', role: 'member', total_hours: 0 }).select().single();
+      data = inserted || { email: user.email, full_name: user.user_metadata?.full_name || '', role: 'member', total_hours: 0 };
+    }
+    currentProfile = data;
+    document.getElementById('nav-user-info').style.display = 'flex';
+    document.getElementById('nav-user-name').textContent = currentProfile.full_name || currentProfile.email;
+    document.getElementById('nav-auth').style.display = 'none';
+    document.getElementById('nav-dashboard').style.display = 'inline-block';
+    if (currentProfile.role === 'moderator') {
+      document.getElementById('nav-admin').style.display = 'inline';
+    }
+    console.log('Loaded profile:', currentProfile.email, 'role:', currentProfile.role);
+  }
+
+  // ── AUTH ──────────────────────────────────────────────
+  async function signUp() {
+    const name = document.getElementById('signup-name').value.trim();
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    if (!name || !email || !password) return showAlert('auth-alert', 'Please fill in all fields.', 'error');
+    const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name } } });
+    if (error) return showAlert('auth-alert', error.message, 'error');
+    await loadUser(data.user);
+    showAlert('auth-alert', '🎉 Account created! Welcome to MV Octagon.', 'success');
+    setTimeout(() => showPage('home'), 1500);
+  }
+
+  async function logIn() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) return showAlert('auth-alert', 'Please fill in all fields.', 'error');
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) return showAlert('auth-alert', error.message, 'error');
+    await loadUser(data.user);
+    showAlert('auth-alert', '✅ Logged in successfully!', 'success');
+    setTimeout(() => showPage('home'), 1000);
+  }
+
+  async function signOut() {
+    await sb.auth.signOut();
+    currentUser = null; currentProfile = null;
+    document.getElementById('nav-user-info').style.display = 'none';
+    document.getElementById('nav-auth').style.display = 'inline';
+    document.getElementById('nav-dashboard').style.display = 'none';
+    document.getElementById('nav-admin').style.display = 'none';
+    showPage('home');
+  }
+
+  // ── EVENTS ────────────────────────────────────────────
+  async function loadEvents() {
+    const { data, error } = await sb.from('events').select('*').order('date', { ascending: true });
+    const grid = document.getElementById('events-grid');
+    if (error || !data || data.length === 0) {
+      grid.innerHTML = `<div class="empty-state"><h3>No events scheduled yet</h3><p>Check back soon for new volunteering opportunities!</p></div>`;
+      return;
+    }
+    grid.innerHTML = data.map(e => `
+      <div class="event-card">
+        <div class="event-card-header">
+          <span>${e.name || e.title}</span>
+          <span class="spots">${e.spots} spots</span>
+        </div>
+        <div class="event-card-body">
+          <div class="event-badges">
+            <span class="badge date">${formatDate(e.date)}</span>
+            ${e.category ? '<span class="badge">'+e.category+'</span>' : ''}
+            <span class="badge hours">⏱ ${e.hours}h</span>
+          </div>
+          <p class="event-desc">${e.description}</p>
+          ${e.leader ? '<div class="event-meta">👤 Led by <strong>'+e.leader+'</strong></div>' : ''}
+          <div class="countdown">${getCountdown(e.date)}</div>
+          <button class="btn-accept" onclick="openEventDetail('${e.id}')">More Info</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function openEventDetail(id) {
+    currentEventId = id;
+    const { data: e } = await sb.from('events').select('*').eq('id', id).single();
+    if (!e) return;
+
+    document.getElementById('detail-name').textContent = e.name || e.title;
+    document.getElementById('detail-spots').textContent = e.spots;
+    document.getElementById('detail-leader').textContent = e.leader || 'TBD';
+    document.getElementById('detail-hours').textContent = (e.hours || 0) + ' hours';
+    document.getElementById('detail-date').textContent = formatDate(e.date);
+    document.getElementById('detail-category').textContent = e.category || '—';
+    document.getElementById('detail-desc').textContent = e.description || '';
+    document.getElementById('detail-countdown').textContent = getCountdown(e.date);
+    document.getElementById('detail-alert').innerHTML = '';
+
+    document.getElementById('detail-badges').innerHTML =
+      '<span class="badge date">'+formatDate(e.date)+'</span>' +
+      (e.category ? '<span class="badge">'+e.category+'</span>' : '') +
+      '<span class="badge hours">⏱ '+e.hours+'h</span>';
+
+    // Load registered volunteers by email
+    const { data: regs } = await sb.from('registrations').select('*').eq('event_id', id);
+    const volDiv = document.getElementById('detail-volunteers');
+    if (regs && regs.length > 0) {
+      // Fetch profiles for each registration by email
+      const emails = regs.map(r => r.user_email).filter(Boolean);
+      const { data: profiles } = emails.length > 0
+        ? await sb.from('profiles').select('full_name, email').in('email', emails)
+        : { data: [] };
+      volDiv.innerHTML = regs.map(r => {
+        const prof = (profiles || []).find(p => p.email === r.user_email);
+        const name = prof?.full_name || r.user_email || 'Volunteer';
+        const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+        return '<div style="display:flex;align-items:center;gap:8px;background:var(--blue-pale);border:1px solid var(--blue-border);border-radius:8px;padding:6px 12px;">' +
+          '<div style="width:28px;height:28px;background:var(--blue-dark);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;">' + initials + '</div>' +
+          '<span style="font-size:13px;font-weight:500;color:var(--text-dark);">' + name + '</span></div>';
+      }).join('');
+    } else {
+      volDiv.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">No volunteers yet — be the first!</p>';
+    }
+
+    // Check timing
+    const eventTime = new Date(e.date + 'T08:00:00');
+    const hoursUntil = (eventTime - new Date()) / 3600000;
+    const locked = hoursUntil <= 24 && hoursUntil > 0;
+    const passed = hoursUntil <= 0;
+
+    // Check if already registered
+    let isRegistered = false;
+    if (currentProfile) {
+      const { data: existing } = await sb.from('registrations').select('id').eq('event_id', id).eq('user_email', currentProfile.email).maybeSingle();
+      isRegistered = !!existing;
+    }
+
+    const acceptBtn = document.getElementById('detail-accept-btn');
+    const withdrawBtn = document.getElementById('detail-withdraw-btn');
+    const lockedMsg = document.getElementById('detail-locked-msg');
+
+    if (passed) {
+      acceptBtn.style.display = 'none';
+      withdrawBtn.style.display = 'none';
+      lockedMsg.style.display = 'block';
+      lockedMsg.textContent = 'This event has already passed.';
+      lockedMsg.style.background = '#f3f4f6';
+      lockedMsg.style.color = '#6b7280';
+    } else if (isRegistered) {
+      acceptBtn.style.display = 'none';
+      withdrawBtn.style.display = locked ? 'none' : 'block';
+      lockedMsg.style.display = locked ? 'block' : 'none';
+    } else {
+      acceptBtn.style.display = 'block';
+      withdrawBtn.style.display = 'none';
+      lockedMsg.style.display = 'none';
+    }
+
+    showPage('event-detail');
+  }
+
+  function openRegisterModal(id, name) {
+    if (!currentUser) { showPage('auth'); return; }
+    currentEventId = id;
+    document.getElementById('modal-reg-event-name').textContent = name;
+    document.getElementById('modal-reg-form').style.display = 'block';
+    document.getElementById('modal-reg-confirm').style.display = 'none';
+    document.getElementById('reg-alert').innerHTML = '';
+    document.getElementById('modal-register').classList.add('open');
+  }
+
+  async function acceptEvent() {
+    console.log('acceptEvent called, currentUser:', currentUser?.email, 'currentProfile:', currentProfile?.email, 'id:', currentProfile?.id, 'eventId:', currentEventId);
+    if (!currentUser) { showPage('auth'); return; }
+    if (!currentProfile) { showAlert('detail-alert', 'Please sign out and log back in.', 'error'); return; }
+    if (!currentEventId) { showAlert('detail-alert', 'No event selected.', 'error'); return; }
+    const userEmail = currentProfile.email || currentUser.email;
+    const { error } = await sb.from('registrations').insert({ user_email: userEmail, event_id: currentEventId, attend: false });
+    if (error) return showAlert('detail-alert', 'Error: ' + error.message, 'error');
+    const { data: ev } = await sb.from('events').select('spots').eq('id', currentEventId).single();
+    await sb.from('events').update({ spots: Math.max(0, (ev.spots || 1) - 1) }).eq('id', currentEventId);
+    showAlert('detail-alert', 'You are registered! See you there.', 'success');
+    document.getElementById('detail-accept-btn').style.display = 'none';
+    document.getElementById('detail-withdraw-btn').style.display = 'block';
+    openEventDetail(currentEventId);
+  }
+
+  async function withdrawEvent() {
+    if (!currentUser) return;
+    const { data: e } = await sb.from('events').select('*').eq('id', currentEventId).single();
+    const hoursUntil = (new Date(e.date + 'T08:00:00') - new Date()) / 3600000;
+    if (hoursUntil <= 24) return;
+
+    // Check if late withdrawal (within 24-48 hours) — deduct 2 hours
+    const latePenalty = hoursUntil <= 48;
+
+    await sb.from('registrations').delete().eq('event_id', currentEventId).eq('user_email', currentProfile.email);
+    await sb.from('events').update({ spots: (e.spots || 0) + 1 }).eq('id', currentEventId);
+
+    if (latePenalty && currentProfile.total_hours >= 2) {
+      const newHours = (currentProfile.total_hours || 0) - 2;
+      await sb.from('profiles').update({ total_hours: newHours }).eq('id', currentProfile.id);
+      await sb.from('hours_log').insert({ user_id: currentProfile.id, event_id: currentEventId, hours_given: -2, given_by: currentProfile.id, event_name: e.name||e.title, event_date: e.date });
+      showAlert('detail-alert', '⚠️ Withdrawn. 2 hours deducted for late cancellation.', 'error');
+    } else {
+      showAlert('detail-alert', '✅ You have been withdrawn from this event.', 'success');
+    }
+    document.getElementById('detail-withdraw-btn').style.display = 'none';
+    document.getElementById('detail-accept-btn').style.display = 'block';
+    openEventDetail(currentEventId);
+  }
+
+  async function submitRegistration() {
+    // legacy — no longer used
+  }
+
+  // ── DASHBOARD ─────────────────────────────────────────
+  async function loadDashboard() {
+    if (!currentUser) return;
+    const { data: profile } = await sb.from("profiles").select("*").eq("email", currentUser.email).single();
+    if (!profile) return;
+    currentProfile = profile;
+    const name = profile.full_name || profile.email;
+    const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2);
+    document.getElementById("dash-avatar").textContent = initials;
+    document.getElementById("dash-name").textContent = name;
+    document.getElementById("dash-email").textContent = profile.email;
+    document.getElementById("dash-welcome-name").textContent = profile.full_name?.split(" ")[0] || "there";
+    const roleBadge = document.getElementById("dash-role-badge");
+    roleBadge.textContent = profile.role === "moderator" ? "⭐ Moderator" : "Member";
+    if (profile.role === "moderator") { roleBadge.style.background = "#d1fae5"; roleBadge.style.color = "#065f46"; roleBadge.style.borderColor = "#a7f3d0"; }
+    const totalHours = profile.total_hours || 0;
+    document.getElementById("dash-total-hours").textContent = totalHours;
+    const goal = 100;
+    const pct = Math.min(Math.round((totalHours / goal) * 100), 100);
+    document.getElementById("dash-progress-pct").textContent = pct + "%";
+    document.getElementById("dash-progress-bar").style.width = pct + "%";
+    document.getElementById("dash-progress-label").textContent = totalHours + " of 100 hours completed";
+    const { data: logs } = await sb.from("hours_log").select("*").eq("user_email", currentProfile.email).order("created_at", { ascending: false });
+    const now = new Date();
+    const monthHours = (logs || []).filter(l => { const d = new Date(l.created_at); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((sum, l) => sum + (l.hours_given || 0), 0);
+    document.getElementById("dash-month-hours").textContent = monthHours;
+    const userEmail = currentProfile.email || currentUser.email;
+    const { data: regs } = await sb.from("registrations").select("*").eq("user_email", userEmail);
+    document.getElementById("dash-events-count").textContent = regs?.length || 0;
+    if (regs && regs.length > 0) {
+      const eventIds = regs.map(r => r.event_id).filter(Boolean);
+      const { data: eventsData } = await sb.from("events").select("id, name, title, date, hours, category").in("id", eventIds);
+      document.getElementById("dash-registrations").innerHTML = regs.map(r => {
+        const ev = (eventsData || []).find(e => e.id == r.event_id);
+        return "<div class=\"hours-row\"><div><div style=\"font-weight:600;font-size:14px;color:var(--text-dark)\">" + (ev?.name||ev?.title||"Event") + "</div><div style=\"font-size:12px;color:var(--text-muted);margin-top:2px\">" + formatDate(ev?.date) + "</div></div><span class=\"badge hours\">⏱ " + (ev?.hours||0) + "h</span></div>";
+      }).join("");
+    } else { document.getElementById("dash-registrations").innerHTML = "<p style=\"color:var(--text-muted);font-size:14px;\">No registrations yet. <a onclick=\"showPage(\'home\')\">Browse events</a></p>"; }
+    if (logs && logs.length > 0) {
+      document.getElementById("dash-hours-log").innerHTML = logs.map(l => "<div class=\"hours-row\"><div><div style=\"font-weight:600;font-size:14px;color:var(--text-dark)\">" + (l.event_name||"Event") + "</div><div style=\"font-size:12px;color:var(--text-muted);margin-top:2px\">" + formatDate(l.event_date) + "</div></div><div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700;color:var(--blue-dark)\">+" + l.hours_given + "h</div></div></div>").join("") + "<div style=\"margin-top:12px;padding-top:12px;border-top:2px solid var(--blue-border);display:flex;justify-content:space-between;\"><div style=\"font-weight:700;color:var(--text-dark)\">Total Earned</div><div style=\"font-size:20px;font-weight:700;color:var(--blue-dark)\">" + logs.reduce((s,l)=>s+(l.hours_given||0),0) + "h</div></div>";
+    } else { document.getElementById("dash-hours-log").innerHTML = "<p style=\"color:var(--text-muted);font-size:14px;\">No hours awarded yet.</p>"; }
+  }
+  // ── ADMIN ─────────────────────────────────────────────
+  async function loadAdmin() {
+    const { data: events } = await sb.from('events').select('*').order('date', { ascending: true });
+    const evSelect = document.getElementById('award-event');
+    evSelect.innerHTML = '<option value="">Select event...</option>' + (events || []).map(e => `<option value="${e.id}" data-name="${e.name||e.title}" data-date="${e.date}">${e.name||e.title}</option>`).join('');
+
+    if (events && events.length > 0) {
+      document.getElementById('admin-events-list').innerHTML = `
+        <div style="overflow-x:auto;"><table class="admin-table">
+          <thead><tr><th>Name</th><th>Date</th><th>Category</th><th>Hours</th><th>Spots</th><th>Action</th></tr></thead>
+          <tbody>${events.map(e => `
+            <tr>
+              <td><strong>${e.name||e.title}</strong></td>
+              <td>${formatDate(e.date)}</td>
+              <td>${e.category||'—'}</td>
+              <td>${e.hours}h</td>
+              <td>${e.spots}</td>
+              <td><button class="btn-danger" onclick="deleteEvent('${e.id}')">Delete</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>`;
+    } else {
+      document.getElementById('admin-events-list').innerHTML = '<p style="color:var(--text-muted);font-size:14px;">No events yet.</p>';
+    }
+
+    const { data: members } = await sb.from('profiles').select('*').order('full_name');
+    if (members && members.length > 0) {
+      document.getElementById('admin-members-table').innerHTML = members.map(m => {
+        const n = (m.full_name || m.email || '').replace(/'/g, '');
+        return '<tr>' +
+          '<td>' + (m.full_name || '&mdash;') + '</td>' +
+          '<td>' + m.email + '</td>' +
+          '<td><span class="badge ' + (m.role === 'moderator' ? 'hours' : '') + '">' + m.role + '</span></td>' +
+          '<td>' + (m.total_hours || 0) + 'h</td>' +
+          '<td><button class="btn-secondary" onclick="openModModal(\'' + m.id + '\',\'' + n + '\',\'' + m.role + '\')">' + 'Edit Role</button></td>' +
+          '</tr>';
+      }).join('');
+    }
+  }
+
+  async function addEvent() {
+    const name = document.getElementById('ev-name').value.trim();
+    const date = document.getElementById('ev-date').value;
+    const hours = parseInt(document.getElementById('ev-hours').value);
+    const spots = parseInt(document.getElementById('ev-spots').value);
+    const desc = document.getElementById('ev-desc').value.trim();
+    const leader = document.getElementById('ev-leading').value.trim();
+    if (!name || !date || !hours || !spots || !desc) return showAlert('admin-event-alert', 'Please fill in all required fields.', 'error');
+    const { error } = await sb.from('events').insert({ name, date, hours, spots, description: desc, leader });
+    if (error) return showAlert('admin-event-alert', error.message, 'error');
+    showAlert('admin-event-alert', '✅ Event added successfully!', 'success');
+    ['ev-name','ev-date','ev-hours','ev-spots','ev-desc','ev-leading'].forEach(id => document.getElementById(id).value = '');
+    loadEvents(); loadAdmin();
+  }
+
+  async function deleteEvent(id) {
+    if (!confirm('Delete this event?')) return;
+    await sb.from('registrations').delete().eq('event_id', id);
+    await sb.from('events').delete().eq('id', id);
+    loadEvents(); loadAdmin();
+  }
+
+  async function awardHours() {
+    const email = document.getElementById('award-email').value.trim();
+    const eventSel = document.getElementById('award-event');
+    const eventId = eventSel.value;
+    const eventName = eventSel.selectedOptions[0]?.dataset.name || '';
+    const eventDate = eventSel.selectedOptions[0]?.dataset.date || '';
+    const hours = parseInt(document.getElementById('award-hours').value);
+    if (!email || !eventId || !hours) return showAlert('admin-hours-alert', 'Please fill in all fields.', 'error');
+
+    const { data: member } = await sb.from('profiles').select('*').eq('email', email).single();
+    if (!member) return showAlert('admin-hours-alert', 'Member not found with that email.', 'error');
+
+    await sb.from('hours_log').insert({ user_id: member.id, event_id: eventId, hours_given: hours, given_by: currentUser.id, event_name: eventName, event_date: eventDate });
+    await sb.from('profiles').update({ total_hours: (member.total_hours || 0) + hours }).eq('id', member.id);
+    showAlert('admin-hours-alert', `✅ ${hours} hour(s) awarded to ${member.full_name || email}!`, 'success');
+    document.getElementById('award-email').value = '';
+    document.getElementById('award-hours').value = '';
+    loadAdmin();
+  }
+
+  function openModModal(id, name, role) {
+    modTargetId = id;
+    document.getElementById('modal-mod-name').textContent = name;
+    document.getElementById('mod-role-select').value = role;
+    document.getElementById('modal-mod').classList.add('open');
+  }
+
+  async function updateRole() {
+    const role = document.getElementById('mod-role-select').value;
+    await sb.from('profiles').update({ role }).eq('id', modTargetId);
+    closeModal('modal-mod');
+    loadAdmin();
+  }
+
+  // ── UTILS ─────────────────────────────────────────────
+  function showPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    const navEl = document.getElementById('nav-' + page);
+    if (navEl) navEl.classList.add('active');
+    if (page === 'dashboard') loadDashboard();
+    if (page === 'admin') loadAdmin();
+    window.scrollTo(0, 0);
+  }
+
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+  });
+
+  function switchTab(tab) {
+    document.getElementById('form-signup').style.display = tab === 'signup' ? 'block' : 'none';
+    document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+    document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+    document.getElementById('auth-alert').innerHTML = '';
+  }
+
+  function showSupportConfirm() { document.getElementById('support-confirm').style.display = 'block'; }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function getCountdown(dateStr) {
+    const diff = new Date(dateStr + 'T08:00:00') - new Date();
+    if (diff <= 0) return '⏱ Event has passed';
+    const d = Math.floor(diff / 86400000), h = Math.floor((diff % 86400000) / 3600000), m = Math.floor((diff % 3600000) / 60000);
+    return `⏱ ${d}d ${h}h ${m}m until event`;
+  }
+
+  function showAlert(containerId, msg, type) {
+    const el = document.getElementById(containerId);
+    if (el) el.innerHTML = `<div class="alert ${type}">${msg}</div>`;
+  }
+
+  init();
+</script>
+</body>
+</html>
