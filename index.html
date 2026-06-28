@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MV Octagon | Monta Vista High School</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #0f172a;       /* Deep Academy Navy */
+      --accent: #2563eb;        /* Professional School Blue */
+      --accent-hover: #1d4ed8;
+      --accent-pale: #eff6ff;
+      --border: #e2e8f0;
+      --text-dark: #0f172a;
+      --text-body: #334155;
+      --text-muted: #64748b;
+      --white: #ffffff;
+      --bg: #f8fafc;            /* Clean Slate Grey */
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text-body); min-height: 100vh; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+
+    /* NAVIGATION */
+    nav { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 40px; min-height: 80px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; cursor: pointer; }
+    .nav-logo-text { font-size: 22px; font-weight: 700; color: var(--text-dark); letter-spacing: -0.5px; }
+    .nav-logo-sub { font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 1px; display: block; margin-top: -2px; }
+    .nav-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .nav-links { display: flex; align-items: center; gap: 4px; list-style: none; }
+    .nav-links a { text-decoration: none; font-size: 14px; font-weight: 500; color: var(--text-body); padding: 8px 16px; border-radius: 6px; transition: all 0.2s; cursor: pointer; }
+    .nav-links a:hover { color: var(--accent); background: var(--accent-pale); }
+    .nav-links a.active { color: var(--accent); background: var(--accent-pale); font-weight: 600; }
+    .nav-user { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 12px; padding-top: 2px; }
+    .nav-user-name { font-weight: 600; color: var(--text-dark); }
+    .btn-signout { font-size: 12px; font-weight: 500; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: white; color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+    .btn-signout:hover { color: #ef4444; border-color: #fca5a5; background: #fef2f2; }
+
+    /* HERO PORTAL */
+    .hero { text-align: center; padding: 70px 24px 50px; background: var(--white); border-bottom: 1px solid var(--border); }
+    .hero h1 { font-size: 38px; font-weight: 700; color: var(--text-dark); letter-spacing: -0.5px; margin-bottom: 12px; }
+    .hero h1 span { color: var(--accent); }
+    .hero p { font-size: 16px; color: var(--text-muted); max-width: 540px; margin: 0 auto; line-height: 1.6; }
+
+    /* MAIN SYSTEM */
+    main { flex: 1; max-width: 1140px; margin: 0 auto; width: 100%; padding: 40px 24px 80px; }
+    .section-title { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 24px; letter-spacing: -0.3px; }
+
+    /* PORTAL GRID & CARDS */
+    .events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
+    .event-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .event-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px rgba(15,23,42,0.06); border-color: #cbd5e1; }
+    .event-card-header { background: #fafafa; padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .event-card-header span { color: var(--text-dark); font-size: 15px; font-weight: 700; line-height: 1.4; }
+    .event-card-header .spots { font-size: 12px; font-weight: 600; background: var(--white); border: 1px solid var(--border); color: var(--text-body); padding: 4px 10px; border-radius: 6px; flex-shrink: 0; }
+    .event-card-body { padding: 20px; }
+    .event-badges { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+    .badge { font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 6px; background: #f1f5f9; color: var(--text-body); }
+    .badge.date { background: #fffbeb; color: #b45309; border: 1px solid #fef3c7; }
+    .badge.hours { background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7; font-weight: 600; }
+    .event-desc { font-size: 14px; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px; height: 68px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .event-meta { font-size: 13px; color: var(--text-body); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .countdown { font-size: 12px; color: var(--text-muted); font-weight: 500; margin-bottom: 18px; display: flex; align-items: center; gap: 4px; }
+    .btn-accept { width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.2s; }
+    .btn-accept:hover { background: var(--accent); }
+
+    /* CORE COMPONENTS */
+    .empty-state { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 60px 24px; text-align: center; grid-column: 1/-1; }
+    .empty-state h3 { font-size: 16px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; }
+    .empty-state p { font-size: 14px; color: var(--text-muted); }
+    .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 32px; box-shadow: 0 2px 4px rgba(0,0,0,0.01); }
+
+    /* ADMIN & USER FORMS */
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 11px 14px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text-body); outline: none; transition: all 0.2s; background: #fafafa;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); background: var(--white); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .btn-primary { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.2s; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { padding: 10px 18px; background: #f1f5f9; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; color: var(--text-body); cursor: pointer; transition: background 0.2s; }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .btn-danger { padding: 8px 14px; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; color: #c53030; cursor: pointer; transition: all 0.2s; }
+    .btn-danger:hover { background: #fff0f0; border-color: #feb2b2; }
+
+    /* INSTITUTIONAL MODALS */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); backdrop-filter: blur(2px); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: white; border-radius: 12px; padding: 36px; width: 100%; max-width: 460px; margin: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto; }
+    .modal h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 6px; letter-spacing: -0.3px; }
+    .modal-sub { font-size: 13px; color: var(--accent); font-weight: 600; margin-bottom: 24px; }
+    .modal-btns { display: flex; gap: 12px; margin-top: 24px; }
+
+    /* CORE TABS */
+    .tab-bar { display: flex; gap: 0; margin-bottom: 24px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; pading: 2px; background: #f1f5f9; padding: 3px; }
+    .tab-btn { flex: 1; padding: 10px; border: none; background: transparent; color: var(--text-muted); font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
+    .tab-btn.active { background: white; color: var(--text-dark); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+
+    /* STUDENT METRICS & TABLES */
+    .hours-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--border); }
+    .hours-row:last-child { border-bottom: none; }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .admin-table th { text-align: left; padding: 12px 14px; background: #f8fafc; color: var(--text-dark); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border); }
+    .admin-table td { padding: 14px 14px; border-bottom: 1px solid var(--border); color: var(--text-body); }
+    .admin-table tr:hover td { background: #fafafa; }
+
+    /* ALERTS SYSTEM */
+    .alert { padding: 12px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 500; margin-bottom: 20px; line-height: 1.5; }
+    .alert.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .alert.error { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    footer { background: var(--primary); color: #94a3b8; text-align: center; padding: 24px; font-size: 13px; font-weight: 500; border-top: 1px solid rgba(255,255,255,0.05); margin-top: auto; }
+
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; min-height: auto; padding-top: 14px; padding-bottom: 14px; flex-direction: column; gap: 12px; align-items: flex-start; }
+      .nav-right { width: 100%; align-items: flex-start; }
+      .nav-links { width: 100%; overflow-x: auto; padding-bottom: 4px; }
+      .hero h1 { font-size: 30px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo" onclick="showPage('home')">
+    <svg width="34" height="34" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><polygon points="11,2 25,2 34,11 34,25 25,34 11,34 2,25 2,11" fill="#0f172a" stroke="white" stroke-width="2"/></svg>
+    <div>
+      <span class="nav-logo-text">MV Octagon</span>
+      <span class="nav-logo-sub">Monta Vista Chapter</span>
+    </div>
+  </div>
+  <div class="nav-right">
+    <ul class="nav-links">
+      <li><a onclick="showPage('dashboard')" id="nav-dashboard" style="display:none;background:var(--accent);color:white;padding:8px 16px;">Student Dashboard</a></li>
+      <li><a onclick="showPage('home')" class="active" id="nav-home">Events Portal</a></li>
+      <li><a onclick="showPage('about')" id="nav-about">Chapter Mission</a></li>
+      <li><a onclick="showPage('team')" id="nav-team">Leadership Team</a></li>
+      <li><a onclick="showPage('admin')" id="nav-admin" style="display:none">Administration</a></li>
+      <li><a onclick="showPage('auth')" id="nav-auth">Portal Login</a></li>
+      <li><a onclick="showPage('support')" id="nav-support">Help Desk</a></li>
+    </ul>
+    <div class="nav-user" id="nav-user-info" style="display:none">
+      <span class="nav-user-name" id="nav-user-name"></span>
+      <button class="btn-signout" onclick="signOut()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div id="page-home" class="page active">
+  <div class="hero">
+    <h1>Service & Community <span>Action Dashboard</span></h1>
+    <p>Welcome to the official Monta Vista High School Octagon service platform. Browse confirmed local events, track updates, and secure your volunteer placements.</p>
+  </div>
+  <main>
+    <div class="section-title">Open Volunteering Rosters</div>
+    <div class="events-grid" id="events-grid">
+      <div class="empty-state"><h3>Synchronizing upcoming calendar events...</h3></div>
+    </div>
+  </main>
+</div>
+
+<div id="page-event-detail" class="page">
+  <main style="max-width:840px;">
+    <button onclick="showPage('home')" style="background:none;border:none;color:var(--accent);font-size:14px;font-weight:600;cursor:pointer;margin-bottom:24px;display:flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;">← Return to Events Portal</button>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;flex-wrap:wrap;gap:16px;">
+        <div>
+          <h1 id="detail-name" style="font-size:28px;font-weight:700;color:var(--text-dark);margin-bottom:12px;letter-spacing:-0.5px;"></h1>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;" id="detail-badges"></div>
+        </div>
+        <div id="detail-spots-box" style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:14px 24px;text-align:center;">
+          <div id="detail-spots" style="font-size:26px;font-weight:700;color:var(--text-dark);line-height:1;"></div>
+          <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;margin-top:4px;letter-spacing:0.5px;">Open Slots</div>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin-bottom:28px;"></div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:24px;margin-bottom:32px;">
+        <div>
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px;">Event Coordinator</div>
+          <div id="detail-leader" style="font-size:15px;font-weight:600;color:var(--text-dark);"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px;">Accredited Units</div>
+          <div id="detail-hours" style="font-size:15px;font-weight:600;color:var(--text-dark);"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px;">Calendar Date</div>
+          <div id="detail-date" style="font-size:15px;font-weight:600;color:var(--text-dark);"></div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px;">Operations Category</div>
+          <div id="detail-category" style="font-size:15px;font-weight:600;color:var(--text-dark);"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:32px;">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px;">Deployment Brief & Expectations</div>
+        <p id="detail-desc" style="font-size:15px;color:var(--text-body);line-height:1.7;"></p>
+      </div>
+
+      <div style="margin-bottom:36px;" id="detail-volunteers-section">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:12px;">Active Registered Roster</div>
+        <div id="detail-volunteers" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+      </div>
+
+      <div id="detail-action-area" style="background:#f8fafc;padding:24px;border-radius:8px;border:1px solid var(--border);">
+        <div id="detail-countdown" style="font-size:13px;color:var(--text-body);font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:4px;"></div>
+        <div id="detail-alert" style="margin-bottom:12px;"></div>
+        <button id="detail-accept-btn" class="btn-primary" onclick="acceptEvent()">Confirm Placement & Roster Attendance</button>
+        <button id="detail-withdraw-btn" class="btn-primary" onclick="withdrawEvent()" style="background:#dc2626;display:none;">Withdraw Registration</button>
+        <div id="detail-locked-msg" style="display:none;text-align:center;padding:12px;background:#fffbeb;border:1px solid #fef3c7;border-radius:6px;font-size:13px;color:#b45309;font-weight:600;">⚠️ Roster locked. Changes are restricted within 24 hours of execution.</div>
+        <p style="font-size:12px;color:var(--text-muted);text-align:center;margin-top:12px;line-height:1.4;">Regulatory Note: Cancellations initiated within 24 hours of scheduled events create standard service-hour dynamic adjustments as per club bylaws.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="page-about" class="page">
+  <div class="hero"><h1>Chapter <span>Mission Statement</span></h1><p>The operational directives of Monta Vista Octagon.</p></div>
+  <main style="max-width:760px;">
+    <div class="card">
+      <h2 style="color:var(--text-dark);font-size:22px;margin-bottom:14px;letter-spacing:-0.3px;">Core Objectives</h2>
+      <p style="color:var(--text-body);line-height:1.7;margin-bottom:24px;font-size:15px;">MV Octagon serves as a student-directed community service infrastructure at Monta Vista High School. We organize structured youth leadership tracks through verified civic engagements — ranging from essential resource sorting to public area remediation — ensuring students execute measurable community impacts.</p>
+      <h3 style="color:var(--text-dark);font-size:16px;margin-bottom:12px;font-weight:700;">Operational Benefits</h3>
+      <ul style="color:var(--text-body);line-height:1.8;padding-left:20px;font-size:14px;display:grid;gap:8px;">
+        <li>Accrual of verified service hours authenticated for academic and institution transitions.</li>
+        <li>Direct peer-to-peer accountability and collaborative structural project work.</li>
+        <li>Strategic development of management oversight and clear public service operations.</li>
+      </ul>
+    </div>
+  </main>
+</div>
+
+<div id="page-team" class="page">
+  <div class="hero"><h1>Executive <span>Board</span></h1><p>Monta Vista Octagon chapter coordinators and advisors.</p></div>
+  <main>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:24px;">
+      <div class="card" style="padding:24px;text-align:center;">
+        <div style="width:48px;height:48px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:14px;font-weight:700;color:white;">JM</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text-dark);margin-bottom:4px;">James Mitchell</div>
+        <div style="font-size:12px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">President & Director</div>
+        <div style="font-size:13.5px;color:var(--text-muted);line-height:1.6;">Maintains chapter compliance, schedules administrative alignment, and leads general assemblies.</div>
+      </div>
+      <div class="card" style="padding:24px;text-align:center;">
+        <div style="width:48px;height:48px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:14px;font-weight:700;color:white;">SR</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text-dark);margin-bottom:4px;">Sofia Reyes</div>
+        <div style="font-size:12px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Operations VP</div>
+        <div style="font-size:13.5px;color:var(--text-muted);line-height:1.6;">Directs calendar logistics, maintains host relations, and oversees regional volunteer safety rosters.</div>
+      </div>
+      <div class="card" style="padding:24px;text-align:center;">
+        <div style="width:48px;height:48px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:14px;font-weight:700;color:white;">DK</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text-dark);margin-bottom:4px;">David Kim</div>
+        <div style="font-size:12px;color:var(--accent);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Relations Liaison</div>
+        <div style="font-size:13.5px;color:var(--text-muted);line-height:1.6;">Coordinates outreach programs between campus branches, external non-profits, and educational teams.</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="page-auth" class="page">
+  <div class="hero"><h1>Student <span>Portal Access</span></h1><p>Authenticate your credentials to claim open project rosters.</p></div>
+  <main>
+    <div class="card" style="max-width:400px;margin:0 auto;padding:36px 28px;">
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tab-signup" onclick="switchTab('signup')">Registration</button>
+        <button class="tab-btn" id="tab-login" onclick="switchTab('login')">Account Login</button>
+      </div>
+      <div id="auth-alert"></div>
+      <div id="form-signup">
+        <div class="form-group"><label>Legal Full Name</label><input type="text" id="signup-name" placeholder="First and Last name" /></div>
+        <div class="form-group"><label>Institutional Email</label><input type="email" id="signup-email" placeholder="student@email.com" /></div>
+        <div class="form-group"><label>Security Password</label><input type="password" id="signup-password" placeholder="Minimum 6 characters" /></div>
+        <button class="btn-primary" onclick="signUp()">Initialize Student Profile</button>
+      </div>
+      <div id="form-login" style="display:none;">
+        <div class="form-group"><label>Email Address</label><input type="email" id="login-email" placeholder="student@email.com" /></div>
+        <div class="
